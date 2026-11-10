@@ -25,7 +25,7 @@ services:
     container_name: app-backend
     restart: unless-stopped
     ports:
-      - ${PORT}
+      - ${PORT}:8080
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${DB_NAME:-app_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-app_user}
