@@ -1,0 +1,27 @@
+@hostname = http://localhost
+@port = 5000
+@host = {{hostname}}:{{port}}
+
+### list all users
+GET {{host}}/api/users
+
+### get user by i
+GET {{host}}/api/user/1
+
+### get user by email
+GET {{host}}/api/user/mario.rossi@example.com
+### get user by name
+
+GET {{host}}/api/user/Mario Rossi
+
+### add new user
+POST {{host}}/api/user
+Content-Type: application/json
+
+{
+    "name":"Test",
+    "email":"test@local.org"
+}
+
+### delete user
+DELETE {{host}}/api/user/5

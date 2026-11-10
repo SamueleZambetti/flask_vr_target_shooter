@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form method="POST" action="{{url_for('fe.hello_anonymous')}}">
+    <label for="name_input">Your name</label>
+    <input id="name_input" type="text" name="name">
+    <button type="submit">Enter</button>
+</form>
+{% endblock %}

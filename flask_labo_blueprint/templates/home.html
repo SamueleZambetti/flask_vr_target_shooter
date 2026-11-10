@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-black rounded-3 border border-info shadow">
+    <div class="container-fluid py-3">
+        <h1 class="display-5 fw-bold text-info">CYBER TARGET SHOOTER VR</h1>
+        <p class="col-md-8 fs-5 text-secondary">
+            Entra nell'arena WebXR direttamente dal browser del tuo visore VR (Meta Quest / OpenXR) o dal PC.
+            Spara ai bersagli olografici, evita le bombe rosse e scala la classifica globale salvata su Flask!
+        </p>
+        <form action="{{ url_for('fe.vr_shooter') }}" method="GET" class="row g-3 align-items-center mt-2">
+            <div class="col-auto">
+                <input type="text" name="player" class="form-control bg-dark text-white border-info" placeholder="Tuo Nickname (es. Player1)" required maxlength="18">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-info btn-lg fw-bold">🚀 ENTRA NELL'ARENA VR</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

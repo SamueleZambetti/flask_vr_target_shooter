@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "player": "CyberSniper",
+    "score": 450,
+    "accuracy": "92%",
+    "mode": "Reflex"
+  },
+  {
+    "id": 2,
+    "player": "QuestMaster",
+    "score": 380,
+    "accuracy": "85%",
+    "mode": "Reflex"
+  },
+  {
+    "id": 3,
+    "player": "Mario Rossi",
+    "score": 210,
+    "accuracy": "74%",
+    "mode": "Reflex"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "Mario Rossi",
+    "age": 32,
+    "email": "mario.rossi@example.com"
+  },
+  {
+    "id": 2,
+    "name": "Laura Bianchi",
+    "age": 28,
+    "email": "laura.bianchi@example.com"
+  },
+  {
+    "id": 3,
+    "name": "Giuseppe Verdi",
+    "age": 45,
+    "email": "giuseppe.verdi@example.com"
+  },
+    {
+    "id": 4,
+    "name": "Ad@",
+    "age": 45,
+    "email": "ada@mail.org"
+  }
+]

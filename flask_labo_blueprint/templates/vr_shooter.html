@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Target Shooter VR - Flask WebXR</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+        #ui-overlay {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 9999;
+            font-family: monospace;
+            background: rgba(0, 10, 20, 0.85);
+            color: #00ffcc;
+            padding: 12px 18px;
+            border: 1px solid #00ffcc;
+            border-radius: 8px;
+        }
+        #ui-overlay a {
+            color: #ff0055;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-overlay">
+        <div>GIOCATORE: <strong id="player-label">{{ player_name }}</strong></div>
+        <div style="font-size: 0.85em; color: #aaa;">PC: Mouse + Click | VR: Trigger sui Controller</div>
+        <div style="margin-top: 6px;"><a href="{{ url_for('fe.home') }}">⬅ Torna alla Lobby</a></div>
+    </div>
+
+    <a-scene background="color: #050510" fog="type: exponential; color: #050510; density: 0.035">
+        <!-- Luci -->
+        <a-light type="ambient" color="#223344" intensity="1.2"></a-light>
+        <a-light type="point" position="0 6 -4" color="#00ffcc" intensity="2" distance="25"></a-light>
+        <a-light type="point" position="0 3 -10" color="#ff0055" intensity="1.5" distance="25"></a-light>
+
+        <!-- Pavimento Griglia Cyber -->
+        <a-plane position="0 0 -4" rotation="-90 0 0" width="60" height="60" color="#090d16" roughness="0.8"></a-plane>
+        <a-grid position="0 0.01 -4" width="60" height="60" cell-size="1" color="#00ffcc" opacity="0.2"></a-grid>
+
+        <!-- Colonne decorative nell'arena -->
+        <a-box position="-7 3 -8" width="0.6" height="6" depth="0.6" color="#112" material="emissive: #00ffcc; emissiveIntensity: 0.3"></a-box>
+        <a-box position="7 3 -8" width="0.6" height="6" depth="0.6" color="#112" material="emissive: #00ffcc; emissiveIntensity: 0.3"></a-box>
+        <a-box position="-9 3 -14" width="0.6" height="6" depth="0.6" color="#112" material="emissive: #ff0055; emissiveIntensity: 0.3"></a-box>
+        <a-box position="9 3 -14" width="0.6" height="6" depth="0.6" color="#112" material="emissive: #ff0055; emissiveIntensity: 0.3"></a-box>
+
+        <!-- Pannello Principale HUD (Frontale) -->
+        <a-entity position="0 3.3 -6.5">
+            <a-plane width="5.2" height="1.6" color="#0a0f1d" material="opacity: 0.9; side: double"
+                     border="color: #00ffcc"></a-plane>
+            <a-text id="hud-title" value="CYBER TARGET SHOOTER" align="center" position="0 0.45 0.02"
+                    color="#00ffcc" width="7"></a-text>
+            <a-text id="hud-stats" value="PUNTI: 0 | COMBO: x1 | TEMPO: 45s" align="center" position="0 0.05 0.02"
+                    color="#ffffff" width="5.5"></a-text>
+            <a-text id="hud-sub" value="Colpisci la sfera verde START per iniziare!" align="center" position="0 -0.4 0.02"
+                    color="#ffcc00" width="4.5"></a-text>
+        </a-entity>
+
+        <!-- Pannello Leaderboard (Destra) -->
+        <a-entity position="4.5 2.2 -5" rotation="0 -35 0">
+            <a-plane width="3" height="3.2" color="#0a0f1d" material="opacity: 0.9"></a-plane>
+            <a-text id="leaderboard-board" value="TOP HUNTERS
+Caricamento..." align="center"
+                    position="0 0 0.02" color="#00ffcc" width="3.8"></a-text>
+        </a-entity>
+
+        <!-- Pannello IstruzioniBersagli (Sinistra) -->
+        <a-entity position="-4.5 2.2 -5" rotation="0 35 0">
+            <a-plane width="3" height="2.6" color="#0a0f1d" material="opacity: 0.9"></a-plane>
+            <a-text value="BERSAGLI:
+
+[CIANO] Standard: +10 pt
+
+[ORO] Bonus Rapido: +30 pt
+
+[ROSSO] Trappola: -20 pt
+(Azzera la Combo!)"
+                    align="center" position="0 0 0.02" color="#ffffff" width="3.5"></a-text>
+        </a-entity>
+
+        <!-- Pulsante 3D START -->
+        <a-sphere id="start-btn" class="shootable" position="0 1.5 -4" radius="0.45" color="#00ff66"
+                  material="emissive: #00ff66; emissiveIntensity: 0.4"
+                  animation="property: position; to: 0 1.7 -4; dir: alternate; dur: 900; loop: true">
+            <a-text value="START" align="center" position="0 0 0.47" color="#000000" width="5"></a-text>
+        </a-sphere>
+
+        <!-- Contenitore Bersagli Dinamici -->
+        <a-entity id="targets-container"></a-entity>
+
+        <!-- Rig Giocatore (Camera + Controller VR Destro e Sinistro) -->
+        <a-entity id="player-rig" position="0 0 0">
+            <a-camera id="main-camera" position="0 1.6 0" look-controls="pointerLockEnabled: false">
+                <!-- Mirino centrale per giocare da PC o mobile -->
+                <a-ring radius-inner="0.012" radius-outer="0.02" position="0 0 -1"
+                        material="color: #00ffcc; shader: flat"
+                        cursor="fuse: false"
+                        raycaster="objects: .shootable; far: 30"></a-ring>
+            </a-camera>
+
+            <!-- Controller VR Destro con Laser e Modello Pistola minimale -->
+            <a-entity id="right-hand"
+                      laser-controls="hand: right"
+                      raycaster="objects: .shootable; lineColor: #ff0055; far: 30">
+                <a-box width="0.05" height="0.06" depth="0.22" position="0 0 -0.05" color="#222"
+                       material="emissive: #ff0055; emissiveIntensity: 0.2"></a-box>
+            </a-entity>
+
+            <!-- Controller VR Sinistro con Laser e Modello Pistola minimale -->
+            <a-entity id="left-hand"
+                      laser-controls="hand: left"
+                      raycaster="objects: .shootable; lineColor: #00ffcc; far: 30">
+                <a-box width="0.05" height="0.06" depth="0.22" position="0 0 -0.05" color="#222"
+                       material="emissive: #00ffcc; emissiveIntensity: 0.2"></a-box>
+            </a-entity>
+        </a-entity>
+    </a-scene>
+
+    <script>
+        const PLAYER_NAME = {{ player_name | tojson }};
+        let score = 0;
+        let combo = 1;
+        let shotsFired = 0;
+        let shotsHit = 0;
+        let timeLeft = 45;
+        let gameActive = false;
+        let gameInterval = null;
+        let spawnTimeout = null;
+
+        const startBtn = document.querySelector('#start-btn');
+        const hudStats = document.querySelector('#hud-stats');
+        const hudSub = document.querySelector('#hud-sub');
+        const leaderboardBoard = document.querySelector('#leaderboard-board');
+        const targetsContainer = document.querySelector('#targets-container');
+
+        // Sintetizzatore Audio WebAudio (zero file esterni richiesti)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(freq, type = 'sine', duration = 0.12) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Conta i colpi sparati a vuoto per calcolare la precisione
+        window.addEventListener('mousedown', () => { if (gameActive) shotsFired++; });
+        document.querySelector('#right-hand').addEventListener('triggerdown', () => { if (gameActive) shotsFired++; });
+        document.querySelector('#left-hand').addEventListener('triggerdown', () => { if (gameActive) shotsFired++; });
+
+        // Carica la classifica dal backend Flask (/api/scores)
+        async function fetchLeaderboard() {
+            try {
+                const res = await fetch('/api/scores');
+                const data = await res.json();
+                let txt = "TOP HUNTERS\n---------------------\n";
+                data.slice(0, 6).forEach((item, i) => {
+                    txt += `${i + 1}. ${item.player}: ${item.score} (${item.accuracy})\n`;
+                });
+                leaderboardBoard.setAttribute('value', txt);
+            } catch (err) {
+                console.error("Errore API Leaderboard:", err);
+            }
+        }
+
+        // Invia il punteggio a fine partita
+        async function saveScore() {
+            const acc = shotsFired > 0 ? Math.min(100, Math.round((shotsHit / shotsFired) * 100)) + '%' : '100%';
+            try {
+                await fetch('/api/scores', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        player: PLAYER_NAME,
+                        score: score,
+                        accuracy: acc,
+                        mode: 'CyberVR'
+                    })
+                });
+                fetchLeaderboard();
+            } catch (err) {
+                console.error("Errore salvataggio score:", err);
+            }
+        }
+
+        function updateHUD() {
+            hudStats.setAttribute('value', `PUNTI: ${score} | COMBO: x${combo} | TEMPO: ${timeLeft}s`);
+        }
+
+        // Crea un bersaglio dinamico nell'arena 3D
+        function spawnTarget() {
+            if (!gameActive) return;
+
+            const el = document.createElement('a-sphere');
+            el.classList.add('shootable');
+
+            // Scelta casuale del tipo di bersaglio: 65% Standard (Ciano), 20% Gold (Oro), 15% Bomba (Rosso)
+            const rand = Math.random();
+            let type = 'standard';
+            let radius = 0.42;
+            let color = '#00ffcc';
+            let lifeTime = 2400;
+
+            if (rand > 0.85) {
+                type = 'hazard';
+                radius = 0.45;
+                color = '#ff0044';
+                lifeTime = 2200;
+            } else if (rand > 0.65) {
+                type = 'gold';
+                radius = 0.28;
+                color = '#ffcc00';
+                lifeTime = 1500;
+            }
+
+            const x = (Math.random() * 9) - 4.5;
+            const y = (Math.random() * 2.5) + 0.9;
+            const z = -((Math.random() * 5) + 3.5);
+
+            el.setAttribute('radius', radius);
+            el.setAttribute('color', color);
+            el.setAttribute('position', `${x} ${y} ${z}`);
+            el.setAttribute('material', `emissive: ${color}; emissiveIntensity: 0.45`);
+
+            // Piccolo movimento fluttuante per rendere il tiro più sfidante
+            const destX = x + ((Math.random() * 2) - 1);
+            el.setAttribute('animation', `property: position; to: ${destX} ${y} ${z}; dir: alternate; dur: 1000; loop: true`);
+
+            let hit = false;
+            el.addEventListener('click', () => {
+                if (!gameActive || hit) return;
+                hit = true;
+
+                if (type === 'standard') {
+                    shotsHit++;
+                    score += 10 * combo;
+                    combo = Math.min(5, combo + 1);
+                    playSound(620, 'triangle', 0.1);
+                } else if (type === 'gold') {
+                    shotsHit++;
+                    score += 30 * combo;
+                    combo = Math.min(5, combo + 1);
+                    playSound(920, 'sine', 0.18);
+                } else if (type === 'hazard') {
+                    score = Math.max(0, score - 20);
+                    combo = 1;
+                    playSound(140, 'sawtooth', 0.25);
+                }
+
+                updateHUD();
+                if (el.parentNode) el.parentNode.removeChild(el);
+            });
+
+            targetsContainer.appendChild(el);
+
+            // Rimozione automatica se il giocatore non lo colpisce in tempo
+            setTimeout(() => {
+                if (!hit && el.parentNode) {
+                    el.parentNode.removeChild(el);
+                    if (type !== 'hazard' && gameActive) {
+                        combo = 1; // Reset combo se manchi un bersaglio buono
+                        updateHUD();
+                    }
+                }
+            }, lifeTime);
+
+            // Pianifica il prossimo spawn (più veloce man mano che il tempo scende)
+            const nextDelay = Math.max(400, 950 - ((45 - timeLeft) * 10));
+            spawnTimeout = setTimeout(spawnTarget, nextDelay);
+        }
+
+        // Avvia la partita quando si spara a START
+        startBtn.addEventListener('click', () => {
+            if (gameActive) return;
+            gameActive = true;
+            score = 0;
+            combo = 1;
+            shotsFired = 0;
+            shotsHit = 0;
+            timeLeft = 45;
+
+            playSound(520, 'sine', 0.2);
+            startBtn.setAttribute('visible', 'false');
+            startBtn.setAttribute('position', '0 -10 0');
+            hudSub.setAttribute('value', 'Colpisci i bersagli CIANO e ORO! Evita quelli ROSSI!');
+            updateHUD();
+
+            spawnTarget();
+
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        });
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            clearTimeout(spawnTimeout);
+
+            // Pulisci i bersagli rimasti
+            targetsContainer.innerHTML = '';
+
+            playSound(280, 'square', 0.35);
+            const acc = shotsFired > 0 ? Math.min(100, Math.round((shotsHit / shotsFired) * 100)) + '%' : '100%';
+            hudSub.setAttribute('value', `PARTITA CONCLUSA! Precisione: ${acc} - Spara a START per rigiocare`);
+
+            startBtn.setAttribute('visible', 'true');
+            startBtn.setAttribute('position', '0 1.5 -4');
+
+            saveScore();
+        }
+
+        fetchLeaderboard();
+    </script>
+</body>
+</html>

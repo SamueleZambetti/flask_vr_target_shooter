@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Labo Flask VR{% endblock %}</title>
+    <link href="{{ url_for('static', filename='vendor/css/bootstrap.min.css') }}" rel="stylesheet">
+    <script type="module" src="{{ url_for('static', filename='vendor/js/bootstrap.bundle.min.js') }}"></script>
+</head>
+<body class="bg-dark text-light">
+    <div class="container py-4">
+        <nav class="d-flex gap-3 mb-4 border-bottom border-secondary pb-3 align-items-center">
+            <a class="btn btn-outline-info btn-sm" href="{{ url_for('fe.home') }}">Home</a>
+            <a class="btn btn-danger btn-sm fw-bold" href="{{ url_for('fe.vr_shooter') }}">🎮 Gioca VR Target Shooter</a>
+            <a class="btn btn-outline-light btn-sm" href="{{ url_for('fe.about') }}">About</a>
+            <a class="btn btn-outline-light btn-sm" href="{{ url_for('fe.hello', name='geo') }}">Hello</a>
+        </nav>
+        {% block content %}
+        {% endblock %}
+    </div>
+</body>
+</html>
